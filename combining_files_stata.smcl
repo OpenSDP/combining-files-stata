@@ -1,0 +1,786 @@
+{smcl}
+{txt}{...}
+{pstd}{c TLC}{hline 53}{c TRC}{break}
+{bf}{...}
+{c |}{bf: OpenSDP Data Janitor Tutorial{space 23}}{c |}{break}
+{c |}{bf: Combining Files in Stata: Building an Analysis File{space 1}}{c |}{break}
+{sf}{...}
+{c BLC}{hline 53}{c BRC}
+
+
+{pstd}Data is often stored in different silos within an education agency. For example, 
+to examine human capital patterns within your agency you will likely have to 
+collect, clean and combine many types of data. Teacher hiring and experience 
+data might be kept by the human resources department, credentialing information 
+might be stored with a professional standards board, and teacher class 
+assignments might be stored in the student information system, or (in the form 
+of validated rosters) within the teacher evaluation system along with teacher 
+observation and growth scores. Similarly, if you are interested in analyzing 
+student college-going success, you'll need to collect and combine student 
+assessment data, graduation and college attendance data, student background 
+characteristics, and enrollment and course taking records. If you want to 
+evaluate the impact of an intervention on student test scores or behavior, 
+you'll need to combine records about the intervention in question with data on 
+test scores, attendance, discipline, school and class enrollment, and student 
+background characteristics. 
+
+{pstd} Even if the different types of data you need are 
+stored by your district, state, or charter management organization in a 
+longitudinal data warehouse, you'll still need to extract the data from the 
+warehouse, typically in separate tables, clean the data into a format that is 
+optimized for your analysis software, and combine the tables into a single file 
+for analysis. Completing these tasks to sucessful build an analysis file is a 
+milestone in a statistical computing project. It means that you have assembled 
+all of the information you need, you have identified and documented problems 
+with data coverage or quality and considered their potential impact on your 
+work, you have developed a "mental map" of the data through data exploration, 
+and you have figured out how to define the specific variables you will need. 
+The data, and you, are ready to begin analysis. 
+
+{pstd}Here are the typical data preparation steps which culminate in a completed 
+analysis file:
+
+{pstd}1.	Develop and refine your analytic questions and specify the data you will 
+need to answer them.
+
+{pstd}2.	Research data sources and make arrangements to interview the data owners 
+for each type of data that you will need. 
+
+{pstd}3.	During the interviews, ask questions about how the data are stored, how 
+frequently they are updated, the data owners' impressions of the quality of 
+the data and any concerns they have, recent or planned changes to collection 
+processes or the software used to store the data, and what IDs or other 
+information can be used to link disparate types of data. 
+
+{pstd}4.	Prepare the query to extract the data you need, either by yourself (if you 
+have the necessary data access and skill) or in consultation with the data 
+owners.
+
+{pstd}5.	After you receive the data, check each raw data file to make sure that the 
+variables you need are present, that the counts (of students, teachers, schools, 
+etc.) for each school year or other time period are what you expect, and that 
+the files can be linked using common IDs or other information. If not, make 
+arrangements to re-pull the data.
+
+{pstd}6.	Write code to clean each raw data file, exploring the data, optimizing the 
+format and coding of the variables for your software, simplifying the structure 
+of the files, making the data internally consistent, and documenting your edits 
+and changes. 
+
+{pstd}7.	Write code to combine the cleaned files into an analysis file and define the 
+additional variables you will need for your analysis.
+
+{pstd}If you follow these steps and clean and combine your data carefully, you may 
+find that you will be able to use your analysis file to answer a multitude of 
+policy-relevant questions, much more quickly than if you had to start from 
+scratch with each new question. In addition, you will be able to edit and 
+re-use your data cleaning code when you receive new or updated data.
+
+{pstd}In this tutorial, you will learn Stata commands for the final step above, 
+combining cleaned data files. The data used in this tutorial is simpler than 
+the data you are likely to use in a real analysis project--there are fewer 
+variables in each file, and fewer files which need to be combined--but the 
+process is akin to one you might use in the real world. This tutorial assumes 
+that you have a limited knowledge of Stata. If you don’t know any Stata at all, 
+you may find it helpful to complete the OpenSDP Data Exploration Tutorial before 
+starting this one. 
+
+{pstd}To start this tutorial, arrange this window and the Stata window side by side so 
+you can see both. As you read through the tutorial, click on commands in blue or 
+type commands into the Stata command window. If you see the word "Answer" in 
+blue try to figure out the answer or do the next step yourself before checking 
+the answer. 
+
+{pstd}Your goal is to merge student, test score, and school data files and save them 
+in a combined analysis file. In Part 1, you will briefly inspect the three 
+cleaned data files (in the real world, you would already be very familiar with 
+the data and could skip this step). In Part 2, you will combine the student and 
+test score files, and in Part 3, you will add information about schools. 
+Finally, in Part 4 you will define several additional variables and then save 
+the analysis file.
+
+{pstd}{bf:PART 1: INSPECT FILES}
+
+{pstd}First, verify that Stata’s working directory is set to the directory containing 
+the tutorial file (it will be if you opened this tutorial by double-clicking on 
+combining_files.smcl). If you see a listing for combining_files.smcl and a data 
+subdirectory when you use the dir command, the working directory is correct.
+
+	{stata dir}
+
+{pstd}Next, load the student file. The clear option tells Stata to replace any data 
+that is currently in memory. Unlike programs such as R, Stata will load only one 
+dataset at a time. Any changes you make to data are temporary—they are stored in 
+the copy of the data in memory, not on your hard drive--unless you explicitly 
+save the file. 
+
+	{stata use "data\student", clear}
+
+{pstd}Based on the list of variables, it looks like student id and school year are 
+probably the key variables--that is, those two variables uniquely identify the 
+records, so that there is only one record per student per school year. Check 
+this.
+
+	{stata isid sid school_year}
+
+{pstd}Another way to check data structure is to use the duplicates command. This 
+shows that there are no instances of duplicated student ID-school year 
+combinations.
+
+	{stata duplicates report sid school_year}
+
+{pstd}Use the codebook command to review all the variables. We'll stipulate that 
+this is a cleaned data file that is ready for merging. The codebook command 
+seems to support this--all the categorical variables are numerically encoded, 
+and those with more than two categories have informative value labels. The 
+binary yes/no variables are encoded as zero and one. We can assume that 0 
+indicates no, or false, and 1 indicates yes, or true. Note that the data covers 
+five school years, including 178,625 unique students and 254 school codes.
+
+	{stata codebook}
+
+{pstd}One anomaly is that there are no 12th graders in the first year of the data. 
+The consistency of the counts from 2014 onward suggests that the data is good 
+for years after 2013, but probably not for 2013.
+
+	{stata tab s_grade_level school_year, mi}
+
+{pstd}Next, load the test score file. Check on its structure and contents by
+typing commands in the Stata command window. You can click on the "Answer" 
+lines in blue below to do this as well.
+
+	{stata use "data\test", clear}
+	{stata isid sid school_year:Answer}
+	{stata codebook:Answer}
+
+{pstd}Question: how do the number of years of data coverage for the test score file 
+compare to the number of years of data coverage for the student file?
+
+	{stata display "The test score data extends back to 2011, while the student data extends back only to 2013.":Answer}
+
+{pstd}How many unique students are there in the test score file? You can check this 
+by looking at the codebook entry for sid in the results window, by using the 
+unique command, or by repeating the codebook command. (If the unique command 
+isn’t installed in your version of Stata, type "ssc install unique" in the 
+command window.)
+
+	{stata unique sid}
+	{stata codebook sid}
+
+{pstd}How does the number of students per year in the test score file compare with 
+the number of students per year in the student file? You can check this by 
+tabulating school years or by checking the codebook entry for school years. 
+Then, scroll up in the results window to compare against the yearly totals of 
+students by grade in the student file.
+
+	{stata tab school_year, mi}
+
+{pstd}Question: How many students are in the test score file in 2017? What about the student 
+file?
+
+	{stata display "There are 76,253 students in the test score file, and 128,547 students in the student file in 2017.":Answer}
+
+{pstd}More students were enrolled than took tests, which is not surprising. But 
+there are substantial changes across years in the number of records in the test 
+file. Check to see how many students in each grade took tests in each year.
+
+	{stata tab grade_level school_year, mi}
+
+{pstd}Question: Can you explain why the number of records in the test file is different in 
+different years?
+
+	{stata display "It looks as if tests in 8th, 9th, and 10th grade were administered starting in 2012, while tests for second graders were discontinued in 2016.":Answer}
+
+{pstd}Finally, let's examine the data in the school file. First, load the data.
+
+	{stata use "data\school", clear}
+
+{pstd}Then, verify the structure. Use the isid command in Stata’s command window. 
+There is only one record per school, rather than a separate record for each 
+school in each year. 
+
+	{stata isid school_code}
+
+{pstd}Examine the variables with the codebook command.
+
+	{stata codebook}
+
+{pstd}Question: How many schools are in the data?
+
+	{stata display "There are 293 schools in the school file.":Answer}
+
+{pstd}What is the distribution of school types in the file?
+
+	{stata tab sch_type, mi}
+
+{pstd}{bf:PART 2: COMBINING STUDENT DATA AND TEST SCORES}
+
+{pstd}Now that you've briefly inspected the cleaned student, test, and school data 
+files, you're ready to combine them into an analysis file using Stata’s merge 
+command. When you start combining cleaned data files to build an analysis file, 
+ask yourself the following questions:
+
+	Which file should I start with?
+	What if the files don't match perfectly? Which records should be included in the final analysis file?
+	Which years of data should be included in the final analysis file?
+
+{pstd}Keep these questions in mind as you work through the rest of the tutorial. 
+
+{pstd}Even though Stata's merge command does allow you to merge multiple files at 
+once, this is usually not a good idea. Instead, it's better to start with one 
+file and then merge other files one at a time. This gives you a chance to 
+examine the results of each merge and decide what to do about unmatched records. 
+
+{pstd}First, reload the student data file. Recall that sid and school_year are the key 
+variables for both the student and test score files.
+
+	{stata use "data\student", clear}
+	{stata isid sid school_year}
+
+{pstd}The merge command treats the file currently in memory as the "master" file, 
+and the file you want to merge as the "using" file. Because both files have the 
+same key fields, this will be a one to one merge--Stata will attempt to match  
+each record in the student file with exactly one record in the school year file. 
+Type the following into the Stata command window:
+
+	merge 1:1 sid school_year using "data\test"
+
+{pstd}Look closely at the output. If you keep programming in Stata, you will get 
+very used to interpreting the output of merge commands. The top number, 350,578, 
+is the number of records that didn't merge--that is, the student ID and school 
+year in one file couldn't be found in the other. The second line shows the 
+number of records that didn't merge from the master, or student file. There were 
+217,863 of them. The third line shows the number of student-year records that 
+were present in the test score file--the "using" file--but not in the school year 
+file. The bottom line shows that there were 404,699 records that could be matched 
+and which merged successfully. The data now in memory includes all of the 
+information from both files, even though not all of the records could be 
+matched. 
+
+{pstd}Look at the list of variables and you'll see variables from both files on the 
+list. The variables from the master student file appear first, followed by the 
+variables from the using test score file. The matched key variables--sid and 
+school_year--appear only once, even though they were present in both files. At 
+the bottom, Stata has created a new variable, _merge, which stores the results 
+of the merge for each record. You can tabulate _merge like any other variable.
+
+	{stata tab _merge, mi}
+
+{pstd}Question: What share of records matched successfully?
+
+	{stata display "53.58 percent":Answer}
+
+{pstd}If you tabulate the _merge variable with the nolabel option, you can see that 
+it is coded numerically: 1 for records only present in the student file, 2 for 
+records only present in the test score file, and 3 for records present in both 
+files.
+
+	{stata tab _merge, mi nolabel}
+
+{pstd}Let's browse the merged data to understand more about how the merge worked. 
+First, look at the records which merged successfully. For these records, test 
+scores have been successfully added to the student data. Close or minimize the 
+browser window after you inspect the data.
+
+	{stata browse if _merge == 3}
+
+{pstd}Next, take a look at the "master only" records. These records have missing 
+values for all the test score variables.
+
+	{stata browse if _merge == 1}
+
+{pstd}Similarly, the "using only" records have missing values for all the student 
+variables (except sid and school_year, of course).
+
+	{stata browse if _merge == 2}
+
+{pstd}What about the fake_data variable? It was present in both files, but wasn't 
+included in the key variables for merging. In this type of situation, Stata will 
+overwrite the contents of the variable in the using file with the values in the 
+master file. Since fake_data was 1, or true, for all records in both files, this 
+didn't cause any changes this time, but it might in other cases, so be careful! 
+Note that Stata will also overwrite variable and value labels in the using file 
+with labels from the master file.
+
+	{stata tab fake_data, mi}
+
+{pstd}Clearly, if you want to do analyses that depend on having both student 
+characteristics and test score data, you can't use any of the records that are 
+missing one or the other in your analysis sample. What does this mean for your 
+analysis file? Should you just keep the records for which _merge is 3, and drop 
+the others? Should you keep all the records, and drop the extra records when you 
+start analysis? Do some additional merge diagnostics before you decide how to 
+proceed. First, see how the records merged for each individual school year.
+
+	{stata tab school_year _merge, mi}
+
+{pstd}Question: Which school years have only test score data?
+
+	{stata display "2011 and 2012":Answer}
+
+{pstd}Remember that there was a problem with the student data in 2013--it was 
+missing 12th graders, and in general the counts were lower than in later years. 
+You can recreate that tabulation by looking at all the records except the 
+test-score only records.
+
+	{stata tab s_grade_level school_year if _merge != 2, mi}
+
+{pstd}Let's assume that after careful thought, you've decided that four years of 
+data are sufficient for your analysis, and you don't trust the 2013 student data 
+and don't want to use it without further investigation, and potentially a new 
+data pull. But, you want to use prior-year test scores in some of your analyses. 
+So, even if you plan to drop the 2013 student records, you want to keep the test 
+score records from that year so that you have prior-year test scores available 
+for students in 2014 who were also in the data in 2013. 
+
+{pstd}Looking at the test score data, the counts seem consistent across years from 
+2012 forward. (Note that the grade_level variable is the grade variable from the 
+test score data, while the s_grade_level data is the variable from the student 
+data.)
+
+	{stata tab grade_level school_year if _merge != 1, mi}
+
+{pstd}Taking another look at the merge status by year, you decide that it's safe to 
+drop the first two years of data. Later, after you've defined a prior-year test 
+score variable you will be able to drop the 2013 records as well, and keep only 
+2014-2017 in your analysis file, but you'll complete the rest of the merging 
+process before you do that.
+
+	{stata tab school_year _merge, mi}
+	{stata drop if school_year <= 2012}
+
+{pstd}Now when you tabulate the _merge variable, you are looking at the match rate 
+for two data sources which span the same set of years, so the percentages of 
+matching and non-matching records are more meaningful.
+
+	{stata tab _merge, mi}
+
+{pstd}Question: What share of the student-year records were present only in the test score 
+file?
+
+	{stata display "About half a percent.":Answer}
+
+{pstd}It seems logical that there are students without test score data. Is roughly a 
+third a reasonable share of records to be missing test scores? Check by grade 
+level.
+
+	{stata tab grade_level _merge, mi}
+
+{pstd}Oops! Using the grade level variable from the test file doesn't work, since 
+it's missing in all of the records which are missing test data. Repeat the 
+command above, but this time use the grade level variable from the student file 
+instead.
+
+	{stata tab s_grade_level _merge, mi:Answer}
+
+{pstd}Add the row option to look at the share of records which merge as well as 
+the count.
+
+	{stata tab s_grade_level _merge, mi row:Answer}
+
+{pstd}Question: What share of fourth-grade student records have test score data?
+
+	{stata display "About 95 percent.":Answer}
+
+{pstd}For grades 3-8, about 95 percent of students have math or ELA test score data. 
+For grades 9 and 10, the shares are under 90 percent. This seems reasonable--
+most of those students without test scores were likely absent on test day, 
+enrolled in schools elsewhere, or didn't take the test for some other reason.
+
+	{stata tab _merge if s_grade_level >= 3 & s_grade_level <= 8}
+	{stata tab _merge if s_grade_level == 9 | s_grade_level == 10}
+
+{pstd}Thinking back to the questions earlier, does it make sense to keep only 
+student records with test scores, if you need test scores for your analysis? In 
+general, no. You can always restrict your analysis sample when you do the 
+analysis, but keeping all of the records, including students in untested grades 
+and students missing test scores, in your cleaned, compiled analysis file means 
+you can use the analysis file for multiple purposes. 
+
+{pstd}And, even if you do decide to restrict your analysis file to just students in 
+tested grades, students without test scores who are high mobility or more likely 
+to be absent may be different in systematic ways from students with test scores, 
+so you should keep them so that your data is representative of your student 
+population. In addition, you may want to use your analysis file to track student 
+progress across years, and you don’t want to have students in the analysis file 
+in one year and missing in the next because they are missing a test score that 
+year. 
+
+{pstd}It is worth checking to see if any particular group of students, or particular 
+schools, are missing test scores in tested grades. Except for a handful of small 
+schools, test score missingness doesn't seem to be concentrated in any 
+particular schools, which is reassuring. Note that it would be easier to inspect 
+this if we had school names or knew more about school types.
+
+	{stata tab school_code _merge if s_grade_level >= 3 & s_grade_level <= 8 , mi row}
+
+{pstd}So the answer to whether you should keep both records with _merge equal to 1 
+(student file only) and 3 (matched records with both student and test data)—is 
+yes, you should. What about the 3,165 records with _merge equal to 2 which have 
+only test data? If these students have test scores in the student data system, 
+how can they be missing other data? The answer is that you don’t know. The 
+student data may have come from a snapshot which happened at a different time 
+than the test score data pull, so that the source database was slightly 
+different; there may have been data collection or data entry errors; or the 
+students with missing data may have been present on test day but not in the 
+school system long enough to be included in an annual snapshot data file. You 
+can't check these records against school code, because that variable wasn't 
+present in the test data, but do check the missingness pattern against school 
+year again.
+
+	{stata tab school_year _merge, mi row}
+
+{pstd}You can see that almost all of the non-matches are in 2013, a year where you 
+are suspicious of the student data already. In later years, less than a tenth of 
+a percent of records have test data but no student data. Dropping these few 
+records is unlikely to change the results of any of your analyses, or bias your 
+summary statistics.
+
+{pstd}In this fairly typical case where you have two files which don't match 
+perfectly, it's often best to decide which file you consider to be most 
+complete and accurate, and then use that file as your base file or reference 
+file. In this case you would plan to keep all of the records from your base 
+file, checking and hoping for high match rates as you merge other files with the 
+base file, and planning to drop non-matching records after doing some diagnostic 
+exploration. Using the student file as your base file seems justified here. 
+
+	{stata tab school_year _merge if school_year > 2013, mi row}
+
+{pstd}The result of your merge diagnostics is that you will keep all records from 
+the student file, both those with and without test data, but drop the records 
+from the test data which lack corresponding student data.
+
+	{stata drop if _merge == 2}
+
+{pstd}Finally, drop the _merge variable so that Stata can use the variable name 
+again for the next merge. (You could have used a merge command option to 
+generate it with a different name or rename it now, but because this analysis 
+file building process is fairly simple that’s not necessary.)
+
+	{stata drop _merge}
+
+{pstd}There is one more matter which is likely to lead to confusion for future you 
+or other users of the analysis file: there are two grade level variables. One 
+comes from the test file, and one from the student file. Compare them, first 
+with a crosstab and then by using the compare command.
+
+	{stata tab s_grade_level grade_level, mi}
+	{stata compare s_grade_level grade_level}
+
+{pstd}Of the approximately 400,000 records with test scores, there are about 7000 
+cases of students with testing grade levels that don't correspond to their 
+enrollment grade levels. The test grade level is important--for example, it may 
+have been used to standardize the test scores to have a mean of zero and a 
+standard deviation of one, so that all the students taking a test were compared 
+to other students taking the same test in the same grade and year. But, it's 
+missing for all of the students missing test scores, so it's less useful than 
+the student grade level variable. For the purposes of the analysis file, it 
+probably makes sense to assign a single grade to each student, and use the grade 
+from the student enrollment file. Here you are making a decision to lose some 
+information, in favor of simplifying the analysis file. It's important to 
+document decisions like this in comments when you write a do file.
+
+	{stata drop grade_level}
+
+{pstd}You've successfully merged the test score and student data. For tidiness, move 
+the fake_data variable to the end of the file.
+
+	{stata order fake_data, last}
+
+{pstd}Before beginning to merge the school file, save the data in a new file. This 
+isn't technically necessary, but it will let you restart the tutorial from this 
+point, and will also give you more flexibility for the next merge.
+
+	{stata save "data\student_intermediate", replace}
+
+{pstd}{bf:PART 3: ADDING SCHOOL DATA}
+
+{pstd}The goal for this part of the tutorial is to add school data to the analysis 
+file. Even though the student file is still conceptually the base file, in this 
+case we want to have the school file be the master file and the intermediate 
+student + test score file be the using file because in merges labels from the 
+master file are preserved. The school code has value labels in the school file, 
+so that school codes display as school names rather than numbers unless you 
+invoke the 'nolabel' option. Having the school codes labeled with school names 
+can be handy when making charts and tables. This is strictly a nicety in this 
+case, but it’s good to keep issues like this in mind as you plan how you will 
+combine files.
+
+{pstd}Load the school file. 
+
+	{stata use "data\school", clear}
+
+{pstd}Check the structure using the 'isid' command.
+
+	{stata isid school_code}
+
+{pstd}This will be a one-to-many merge since the student data has multiple records 
+for a given school. Type 'help merge' in the command window and read the help 
+entry, checking the syntax for a one-to-many  merge. Close the help window when 
+you are done (but don't close the tutorial viewer window!).
+
+	help merge
+
+{pstd}Type the following into the command window:
+
+	merge 1:m school_code using "data\student_intermediate"
+
+{pstd}Question: How many schools from the school file did not have student data in the student 
+file?
+
+	{stata display "43":Answer}
+
+{pstd}Use the unique or codebook command to see how many schools there are in the 
+matched student data.
+
+	{stata unique school_code if _merge == 3}
+
+{pstd}The number of unmatched schools seems fairly high--43 compared with 250 
+matched schools. Could there be something wrong with the student data? Look at 
+the names of the unmatched schools.
+
+	{stata tab school_code if _merge == 1, mi}
+
+{pstd}Many of them seem to be religious schools or are listed as pre-schools or 
+treatment centers. Check the school types for these schools.
+
+	{stata tab sch_type _merge, mi}
+
+{pstd}Almost all of the unmatched schools without students are categorized as 
+alternative, not a school, or non-public. It seems safe to drop these records.
+
+	{stata drop if _merge == 1}
+
+{pstd}There are still 10 records from the student data without school data. Browse 
+these records. Close the window when you are done.
+
+	{stata browse if _merge == 2}
+
+{pstd}These four "schools" have very few students, so it's unlikely that you would 
+ever include them in analyses. You have three choices: you can drop the records; 
+you can do some research to find out what entity or program the school codes 
+refer to, update the school file, and then rerun the analysis file building 
+code; or you can keep the records in the analysis file with missing school 
+information. For now, do the latter, but change the school type for the records 
+to alternative so they can be easily excluded when you are defining your 
+analysis sample. 
+
+{pstd}To do this, first find out the numeric code for alternative schools by tabbing 
+the school type variable with and without the nolabel option.
+
+	{stata tab sch_type, mi}
+	{stata tab sch_type, mi nol}
+
+{pstd}Next, find the school codes for the records you want to edit. These have no 
+labels since they are from the student file, not the school file.
+
+	{stata tab school_code if _merge == 2}
+
+{pstd}The inlist function is an alternative to using the 'if' syntax and saves 
+typing.
+
+	{stata replace sch_type = 2 if inlist(school_code, 1360, 1361, 1362, 1365)}
+
+{pstd}Drop the _merge variable, because you no longer need it.
+
+	{stata drop _merge}
+
+{pstd}Review the distribution of school types.
+
+	{stata tab sch_type, mi}
+
+{pstd}You can see that there are still a handful of records that are listed as "not 
+a school" or "non-public." Based on the pattern for the other school codes in 
+these categories, these schools should not have student data. Browse to inspect 
+the records.
+
+	{stata browse if sch_type == 7 | sch_type == 8}
+
+{pstd}These look like data errors that weren't uncovered during data cleaning. The 
+school codes for the given students may be wrong, or the schools may be 
+miscategorized. Deciding whether to keep or drop the records depends on your 
+level of confidence about the information in the school file. School data is 
+notoriously messy, and you can always do more research to make your school 
+information better and your school file cleaner. Overall, 38 student records 
+won't be enough to bias your analytic results, though, so you can drop the 
+records for now. If you were writing your commands in a Stata do file, you could 
+make a note to yourself in a comment to follow up and investigate.
+
+	{stata drop if sch_type == 7 | sch_type == 8}
+
+{pstd}Tidy up the variable order so it's easy to guess the structure of the data by 
+looking at the list of variables. Put the school variables at the end. Do this 
+efficiently by using the sch_ prefix and the * wildcard symbol.
+
+	{stata order sch_*, after(std_score_e)}
+
+{pstd}Put the key variables (student ID and school year) at the beginning.
+
+	{stata order sid school_year }
+
+{pstd}{bf:PART 4: DEFINING DERIVED VARIABLES}
+
+{pstd}Now that you've assembled and tidied up the data you need for your analysis 
+file, you can define additional variables that you may want for convenience, to 
+use as controls in statistical modeling, or for other reasons. For practical 
+reasons you should keep the code for your charts, tables, models, and other 
+analyses in a separate do file from the do file you use to build your analysis
+file. But if you define the variables you need in your analysis file building 
+do file rather than your analysis do file, you can be sure that everyone who 
+uses the analysis file will use the same variable definitions across different 
+analyses and projects. As you develop new variable definitions, you can add them 
+to the analysis file building code periodically and rerun it to update the 
+analysis file. Here we'll demonstrate defining two sets of derived variables. 
+First, we'll add the test scores from the prior year to each student record; and 
+second, we'll generate school-level summaries of some student characteristics.
+
+{pstd}Because the analysis file has a well-defined panel data structure, with 
+only one record for each student and schoolyear, we can use built-in Stata 
+features to define prior-year variables. Stata will handle the 
+record-keeping--accounting for gaps in the annual data, keeping track of 
+individual students across schoolyears, etc. First tell Stata which is the time 
+variable and which is the ID variable using the tsset (time series set) command. 
+Stata refers to the panel variable sid as being unbalanced because there is not 
+a record for each student ID for every year in the dataset.
+
+	{stata tsset sid school_year}
+
+{pstd}Next, define a variable with the prior-year math score for each record. This 
+variable will be missing if the prior-year score doesn't exist. Here the suffix 
+in the variable name stands for "T minus one", but you can use a different 
+variable naming convention if you like. The L. operator tells Stata to get the 
+lagged value of the test score for a given student. Stata has other operators 
+that work similarly. For example, you could use L2 to get the test score from 
+two years prior, or F. to get the "T plus one" value from the following year.
+
+	{stata gen std_score_m_tm1 = L.std_score_m}
+
+{pstd}Similarly, define a variable for the lagged (prior-year) English/Language 
+Arts score. Note that if you define 
+the variable in the command window and also want to see the suggested answer, 
+you might need to type "drop std_score_e_tm1" to drop the variable you have 
+defined before you click on Answer, since Stata won't generate a variable if a 
+variable with the same name already exists.
+
+	{stata gen std_score_e_tm1 = L.std_score_e:Answer}
+
+{pstd}Browse the data to convince yourself that the prior-year variables were 
+defined correctly, and that the test score values from the prior year were 
+copied into the current year for each student record.
+
+	{stata browse sid school_year std_score_*}
+
+{pstd}You saw that there were no lagged test score values defined for 2013, which 
+makes sense because 2013 is the earliest year in the data. Now that we've 
+defined prior-year test scores, we can drop the 2013 records as planned.
+
+	{stata drop if school_year == 2013}
+
+{pstd}Summarize the lagged variables and compare them to the current-year versions 
+of the same variables.
+
+	{stata summ std_*}
+
+{pstd}Finally, tidy up by labelling the new variables and adjusting their location 
+in the dataset.
+
+	{stata label var std_score_m_tm1 "Prior Year Scaled Score in Math (Standard deviations)"}
+	{stata label var std_score_e_tm1 "Prior Year Scaled Score in ELA (Standard deviations)"}
+	{stata order *_tm1, before(sch_name)}
+
+{pstd}Next, define school-level averages or shares for student minority status, 
+economically disadvantaged status, and average test scores. This is a case where 
+using loops would make sense, since the variable definition commands are the 
+same for each variable, but given the constraints of the tutorial platform we'll 
+take them one at a time. In generating these variables, Stata will automatically 
+ignore missing values. First get economically disadvantaged share.
+
+	{stata egen sch_ed_pct = mean(s_ed), by(school_code school_year)}
+
+{pstd}Multiply by 100 to make the average a percentage, and then label the variable.
+
+	{stata replace sch_ed_pct = 100 * sch_ed_pct}
+	{stata label var sch_ed_pct "School Economically Disadvantaged Student Share in Given School Year"}
+
+{pstd}Then define school average math score.
+
+	{stata egen sch_score_m_avg = mean(std_score_m), by(school_code school_year)}
+	{stata label var sch_score_m_avg "School Average Math Score in Given School Year"}
+
+{pstd}Define and label school average ELA score on your own. 
+
+	{stata egen sch_score_e_avg = mean(std_score_e), by(school_code school_year):Answer}
+	{stata label var sch_score_e_avg "School Average ELA Score in Given School Year":Answer}
+
+{pstd}Next define share of minority students. In this case we'll first need to 
+make a binary variable for minority status. For this exercise we will categorize
+all non-white students as minority. Start by checking the distribution of the 
+s_race variable.
+
+	{stata tab s_race, mi}
+	{stata tab s_race, mi nol}
+
+{pstd}Note that it’s important to make sure that the minority variable is correctly 
+set to missing when the categorical race/ethnicity variable is missing. The most 
+straightforward way to define s_minority is to use the generate command to set 
+s_minority equal to 1 when s_race is equal to 5. This will cause s_minority to 
+have a value of 1 for white students, and missing for all others. Then, in a 
+second line of code, you would replace the value of s_minority with 0 if s_race 
+is not equal to 5 and is not missing. 
+
+{pstd}However, you can combine these into a single line of code by using the fact that 
+Stata evaluates comparison expressions to be equal to 0 when they are false, or 
+1 when they are true. In this case you need to remember to exclude missing 
+values using the if syntax or Stata will include those students as minorities. 
+
+{pstd}Generate the variable, check to make sure that it is defined correctly, and then 
+label it.
+
+	{stata gen s_minority = s_race != 5 if s_race != .}
+	{stata tab s_race s_minority, mi}
+	{stata label var s_minority "Student Is Minority"}
+
+{pstd}Use this binary student-level variable to define a school-level minority share 
+by typing commands into the command window, based on the commands on used to 
+define school economically disadvantaged share.
+
+	{stata egen sch_minority_pct = mean(s_minority), by(school_code school_year):Answer}
+	{stata replace sch_minority_pct = 100 * sch_minority_pct:Answer}
+	{stata label var sch_minority_pct "School Minority Student Share in Given School Year":Answer}
+
+{pstd}You should check the distribution of the new variables using data 
+exploration commands like summary, histogram, or tabulate. Since the new 
+variables are school-level variables, you only want to include one record per 
+school per year when you examine them. You can do this by defining a variable 
+which picks out just one record per school and year. This line of code uses the 
+bysort: prefix to sort and group the data by school and year, and generates a 
+variable called tag. Tag equals 1 if a record (denoted by _n, which is Stata's 
+shorthand for "the number of the current record") is the first student record 
+for a given school and year, and 0 otherwise.
+
+	{stata "bysort school_code school_year: gen tag = _n == 1"}
+
+{pstd}Now you can use tag to examine the school-level derived variables by year. 
+When you are done, drop the variable.
+
+	{stata "bysort school_year: summ sch_*_pct sch_*_avg if tag"}
+	{stata drop tag}
+
+{pstd}Tidy up the variable order.
+
+	{stata order s_minority, after(s_race)}
+	{stata order sch_minority_pct, after(sch_ed_pct)}
+	{stata order fake_data, last}
+
+{pstd}Use Stata’s compress command to change variable types to save storage space 
+and make your file size as small as possible.
+
+	{stata compress}
+
+{pstd}Now you have an analysis file which has four years of student demographic and 
+program participation data, test scores, and school characteristics. 
+Congratulations! Verify the structure one last time for luck and save the 
+file.
+
+	{stata isid sid school_year}
+	{stata save "data\student_analysis", replace}
