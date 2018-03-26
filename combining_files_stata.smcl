@@ -723,9 +723,9 @@ s_race variable.
 {pstd}Note that it’s important to make sure that the minority variable is correctly 
 set to missing when the categorical race/ethnicity variable is missing. The most 
 straightforward way to define s_minority is to use the generate command to set 
-s_minority equal to 1 when s_race is equal to 5. This will cause s_minority to 
-have a value of 1 for white students, and missing for all others. Then, in a 
-second line of code, you would replace the value of s_minority with 0 if s_race 
+s_minority equal to 0 when s_race is equal to 5. This will cause s_minority to 
+have a value of 0 for white students, and missing for all others. Then, in a 
+second line of code, you would replace the value of s_minority with 1 if s_race 
 is not equal to 5 and is not missing. 
 
 {pstd}However, you can combine these into a single line of code by using the fact that 
